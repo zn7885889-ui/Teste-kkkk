@@ -1,0 +1,213 @@
+-- ============================================
+-- AUTO CLICKER COMPLETO
+-- ClickDetector + GUI + Simulação de Mouse
+-- ============================================
+
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+-- ============================================
+-- CONFIGURAÇÕES
+-- ============================================
+local CONFIG = {
+	IntervaloClique = 0.1,       -- Tempo entre cliques (segundos)
+	RaioClickDetector = 30,      -- Distância máxima para clicar em ClickDetectors
+	ModoClickDetector = true,    -- Clicar em ClickDetectors próximos
+	ModoGUIMouse = false,        -- Simular clique de mouse em GUI
+	PosicaoMouseX = 500,         -- Posição X do clique simulado
+	PosicaoMouseY = 500,         -- Posição Y do clique simulado
+}
+
+-- ============================================
+-- CRIAÇÃO DA GUI
+-- ============================================
+local gui = Instance.new("ScreenGui")
+gui.Name = "AutoClickerUI"
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Frame principal
+local frame = Instance.new("Frame")
+frame.Name = "MainFrame"
+frame.Size = UDim2.fromOffset(250, 200)
+frame.Position = UDim2.new(0.5, -125, 0.7, 0)
+frame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+-- Título
+local titulo = Instance.new("TextLabel")
+titulo.Size = UDim2.new(1, 0, 0, 30)
+titulo.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+titulo.BorderSizePixel = 0
+titulo.Text = "AUTO CLICKER"
+titulo.TextColor3 = Color3.fromRGB(255, 255, 255)
+titulo.TextSize = 16
+titulo.Font = Enum.Font.GothamBold
+titulo.Parent = frame
+
+local cornerTitulo = Instance.new("UICorner")
+cornerTitulo.CornerRadius = UDim.new(0, 8)
+cornerTitulo.Parent = titulo
+
+-- Botão principal ON/OFF
+local button = Instance.new("TextButton")
+button.Name = "AutoClickButton"
+button.Size = UDim2.new(1, -20, 0, 50)
+button.Position = UDim2.new(0, 10, 0, 40)
+button.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+button.BorderSizePixel = 0
+button.Text = "AUTO CLICK: OFF"
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.TextSize = 18
+button.Font = Enum.Font.GothamBold
+button.Parent = frame
+
+local cornerBtn = Instance.new("UICorner")
+cornerBtn.CornerRadius = UDim.new(0, 6)
+cornerBtn.Parent = button
+
+-- Botão ClickDetector
+local btnDetector = Instance.new("TextButton")
+btnDetector.Size = UDim2.new(1, -20, 0, 35)
+btnDetector.Position = UDim2.new(0, 10, 0, 100)
+btnDetector.BackgroundColor3 = Color3.fromRGB(50, 100, 50)
+btnDetector.BorderSizePixel = 0
+btnDetector.Text = "ClickDetector: ON"
+btnDetector.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnDetector.TextSize = 14
+btnDetector.Font = Enum.Font.Gotham
+btnDetector.Parent = frame
+
+local cornerDet = Instance.new("UICorner")
+cornerDet.CornerRadius = UDim.new(0, 6)
+cornerDet.Parent = btnDetector
+
+-- Botão Mouse GUI
+local btnMouse = Instance.new("TextButton")
+btnMouse.Size = UDim2.new(1, -20, 0, 35)
+btnMouse.Position = UDim2.new(0, 10, 0, 145)
+btnMouse.BackgroundColor3 = Color3.fromRGB(50, 50, 100)
+btnMouse.BorderSizePixel = 0
+btnMouse.Text = "Mouse GUI: OFF"
+btnMouse.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnMouse.TextSize = 14
+btnMouse.Font = Enum.Font.Gotham
+btnMouse.Parent = frame
+
+local cornerMouse = Instance.new("UICorner")
+cornerMouse.CornerRadius = UDim.new(0, 6)
+cornerMouse.Parent = btnMouse
+
+-- ============================================
+-- LÓGICA DO AUTO CLICKER
+-- ============================================
+local ativo = false
+local rodando = false
+
+-- Função: clicar em ClickDetectors próximos
+local function clicarDetectors()
+	local char = player.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+	local posJogador = char.HumanoidRootPart.Position
+	local clicou = false
+
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("ClickDetector") then
+			local parent = obj.Parent
+			if parent and parent:IsA("BasePart") then
+				local dist = (parent.Position - posJogador).Magnitude
+				if dist <= CONFIG.RaioClickDetector then
+					pcall(function()
+						fireclickdetector(obj)
+					end)
+					clicou = true
+				end
+			end
+		end
+	end
+
+	return clicou
+end
+
+-- Função: simular clique de mouse
+local function clicarMouse()
+	pcall(function()
+		VirtualInputManager:SendMouseButtonEvent(
+			CONFIG.PosicaoMouseX,
+			CONFIG.PosicaoMouseY,
+			0, true, game, 1
+		)
+		task.wait(0.02)
+		VirtualInputManager:SendMouseButtonEvent(
+			CONFIG.PosicaoMouseX,
+			CONFIG.PosicaoMouseY,
+			0, false, game, 1
+		)
+	end)
+end
+
+-- Loop principal
+local function loopClique()
+	if rodando then return end
+	rodando = true
+
+	task.spawn(function()
+		while ativo do
+			if CONFIG.ModoClickDetector then
+				clicarDetectors()
+			end
+
+			if CONFIG.ModoGUIMouse then
+				clicarMouse()
+			end
+
+			task.wait(CONFIG.IntervaloClique)
+		end
+		rodando = false
+	end)
+end
+
+-- ============================================
+-- EVENTOS DOS BOTÕES
+-- ============================================
+button.Activated:Connect(function()
+	ativo = not ativo
+	button.Text = ativo and "AUTO CLICK: ON" or "AUTO CLICK: OFF"
+	button.BackgroundColor3 = ativo 
+		and Color3.fromRGB(50, 180, 50) 
+		or Color3.fromRGB(180, 50, 50)
+
+	if ativo then
+		loopClique()
+	end
+end)
+
+btnDetector.Activated:Connect(function()
+	CONFIG.ModoClickDetector = not CONFIG.ModoClickDetector
+	btnDetector.Text = "ClickDetector: " .. (CONFIG.ModoClickDetector and "ON" or "OFF")
+	btnDetector.BackgroundColor3 = CONFIG.ModoClickDetector 
+		and Color3.fromRGB(50, 100, 50) 
+		or Color3.fromRGB(80, 80, 80)
+end)
+
+btnMouse.Activated:Connect(function()
+	CONFIG.ModoGUIMouse = not CONFIG.ModoGUIMouse
+	btnMouse.Text = "Mouse GUI: " .. (CONFIG.ModoGUIMouse and "ON" or "OFF")
+	btnMouse.BackgroundColor3 = CONFIG.ModoGUIMouse 
+		and Color3.fromRGB(50, 50, 150) 
+		or Color3.fromRGB(80, 80, 80)
+end)
+
+print("[AutoClicker] Carregado com sucesso!")
